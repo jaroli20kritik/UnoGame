@@ -3,13 +3,14 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy the project file and restore any dependencies
-COPY ["UnoGame.API.csproj", "./"]
-RUN dotnet restore "UnoGame.API.csproj"
+COPY ["UnoGame.API/UnoGame.API.csproj", "UnoGame.API/"]
+RUN dotnet restore "UnoGame.API/UnoGame.API.csproj"
 
 # Copy the remaining source code
 COPY . .
 
 # Build and publish a release version to the /app/publish directory
+WORKDIR "/src/UnoGame.API"
 RUN dotnet publish "UnoGame.API.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Use the official Microsoft .NET 8 ASP.NET runtime image to run the app
