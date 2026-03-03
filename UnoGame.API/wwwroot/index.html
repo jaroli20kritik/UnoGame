@@ -38,6 +38,7 @@
       color: var(--text);
       font-family: 'Rajdhani', sans-serif;
       min-height: 100vh;
+      min-height: 100dvh;
       overflow-x: hidden;
       background-image:
         radial-gradient(ellipse at 20% 50%, rgba(255, 45, 85, 0.08) 0%, transparent 50%),
@@ -49,6 +50,7 @@
     .screen {
       display: none;
       min-height: 100vh;
+      min-height: 100dvh;
     }
 
     .screen.active {
@@ -93,7 +95,7 @@
 
     .deck-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 1rem;
       width: 100%;
       max-width: 520px;
@@ -402,7 +404,7 @@
 
     .player-slots {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
       gap: 0.75rem;
       width: 100%;
       max-width: 600px;
@@ -481,6 +483,7 @@
     #screen-game {
       flex-direction: column;
       height: 100vh;
+      height: 100dvh;
       overflow: hidden;
     }
 
@@ -619,7 +622,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 2rem;
+      gap: clamp(0.5rem, 5vw, 2rem);
       position: relative;
       flex: 1;
     }
@@ -1006,6 +1009,8 @@
       min-height: 140px;
       align-items: flex-end;
       scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      /* Smooth scrolling on iOS */
     }
 
     .hand-cards::-webkit-scrollbar {
@@ -1297,7 +1302,9 @@
       font-weight: 600;
       border: 1.5px solid var(--dark4);
       animation: toast-in 0.3s ease, toast-out 0.3s ease 2.7s forwards;
-      white-space: nowrap;
+      white-space: normal;
+      max-width: 90vw;
+      text-align: center;
     }
 
     .toast.error {
@@ -1334,25 +1341,73 @@
       }
     }
 
-    /* Responsive */
-    @media (max-width: 480px) {
-      .deck-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-
+    /* Responsive break for tablets */
+    @media (max-width: 768px) {
       .card.top-card {
-        width: 80px;
-        height: 120px;
-        font-size: 2.2rem;
+        width: 90px;
+        height: 135px;
+        font-size: 2.5rem;
       }
 
       .hand-card {
-        width: 55px;
-        height: 82px;
+        width: 60px;
+        height: 90px;
+      }
+
+      .hand-cards {
+        gap: -15px;
+        /* Overlap cards to fit more in viewport */
+        justify-content: flex-start;
+        /* Better scrolling start position */
+        padding-left: 20px;
+        padding-right: 20px;
+      }
+
+      .hand-card:hover {
+        transform: translateY(-20px) scale(1.05);
+        /* Ensure hovered card pops up above overlapping */
+        margin-right: 15px;
+        /* Push next card away slightly when hovered */
+      }
+    }
+
+    /* Responsive break for small mobile */
+    @media (max-width: 480px) {
+      .deck-grid {
+        grid-template-columns: 1fr;
+        /* Single column on very small screens */
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      #tab-browse>div:last-child {
+        flex-direction: column;
+      }
+
+      .logo {
+        font-size: clamp(2.5rem, 10vw, 4rem);
+      }
+
+      .card.top-card {
+        width: 70px;
+        height: 105px;
+        font-size: 2rem;
+      }
+
+      .hand-card {
+        width: 50px;
+        height: 75px;
       }
 
       .hand-card .card-value {
-        font-size: 1.4rem;
+        font-size: 1.2rem;
+      }
+
+      .hand-cards {
+        gap: -25px;
+        /* Tighter overlap on small mobile */
       }
 
       .hand-area {
@@ -1361,6 +1416,21 @@
 
       .event-log {
         display: none;
+      }
+
+      .status-bar {
+        padding: 0.4rem 0.5rem;
+      }
+
+      .game-table {
+        flex-direction: row;
+        gap: 0.5rem;
+        /* Keep draw pile and top card horizontal but tighter */
+      }
+
+      .opp-card-mini {
+        width: 10px;
+        height: 15px;
       }
     }
   </style>
@@ -1606,7 +1676,9 @@
     // ═══════════════════════════════════════════════════════
     // STATE
     // ═══════════════════════════════════════════════════════
-    const API_BASE = window.location.origin;
+    const API_BASE = window.location.protocol === 'file:'
+      ? 'http://localhost:57671' // Use HTTP to avoid local cert errors
+      : window.location.origin;
     let connection = null;
     let myPlayerId = null;
     let myRoomId = null;
@@ -1679,6 +1751,12 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ playerName: name, roomName, deckType: getDeckTypeNum(selectedDeck), maxPlayers, botCount, password: password || null })
         });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`API Error (${res.status}): ${errText}`);
+        }
+
         const data = await res.json();
         myPlayerId = data.playerId;
         myRoomId = data.roomId;
